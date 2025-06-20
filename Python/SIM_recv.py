@@ -5,6 +5,8 @@ import time
 from collections import defaultdict
 
 ENABLE_LOGGING = True
+IP = '127.0.0.1'
+PORT = 11000
 
 # UdpObject: Interprets received UDP bytes
 class UdpObject:
@@ -47,9 +49,9 @@ class UdpObject:
 
 # ReceivingUdp: Handles continuous listening and storing
 class ReceivingUdp:
-    def __init__(self, ip='127.0.0.1', port=11001):
+    def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((ip, port))
+        self.sock.bind((IP, PORT))
         self.last_received_packets = defaultdict(list)
         self.lock = threading.Lock()
         self.running = True
@@ -102,7 +104,7 @@ class ReceivingUdp:
 
 
 if __name__ == "__main__":
-    receiver = ReceivingUdp(port=11001)
+    receiver = ReceivingUdp()
     receiver.start_udp_listener()
 
     try:

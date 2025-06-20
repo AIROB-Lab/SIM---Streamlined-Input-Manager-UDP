@@ -5,6 +5,9 @@ import time
 from enum import IntEnum
 import numpy as np
 
+IP = '127.0.0.1'
+PORT = 11000
+
 # Enum for Degrees of Actuation
 class DOAs(IntEnum):
     th_flex = 0
@@ -31,7 +34,7 @@ class UDPStreamlinedSender:
         self.udp_counter = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.sock.connect(('127.0.0.1', 11000))
+        self.sock.connect((IP, PORT))
 
     def on_new_input(self,predictions:list):
         for i in range(len(predictions)):
