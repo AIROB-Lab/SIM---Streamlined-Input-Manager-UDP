@@ -152,7 +152,10 @@ The message **always** consists of these different sections which are explained 
 * **Datapoint** (message[5 to (-3)]): All the datapoints you are sending.
 * **Counter** (message[(-2) to (-1)]): Last 2 bytes corresponding to an UInt16 value holding a counter. This counter is incremented with every sent message to see if a message has been lost while sending it.
 
-This protocol gives you the flexibility but also forces you to come up with your own categories and sub-categories and their corresponding encodings. Additionally, in case you want to send out data in the same protocol a sender example is provided in **Unity/Sending**. A compatible example for sender and receiver in python are provided in **./Python**
+This protocol gives you the flexibility but also forces you to come up with your own categories and sub-categories and their corresponding encodings. Additionally, in case you want to send out data in the same protocol a sender example is provided in **./Unity** with **SimUdpSender.cs** and an example usage in **PubSensorData.cs**(this one will only work if you have the mujoco plugin installed). A compatible example for sender and receiver in python are provided in **./Python**
+
+<h2 id="state">State of the Repo</h2>
+The current solution was tested with the HTC Vive Eye Pro and Meta Quest 3. ATM the state of the repo is still under development. Please let us know if you encounter any issues with the provided solution. 
 
 <h2 id="header-authors">:seedling: Authors and Acknowledgement</h2>
 
