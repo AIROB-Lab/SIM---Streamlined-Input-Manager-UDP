@@ -5,16 +5,14 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.XR;
 using ViveSR.anipal.Eye;
-using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using static UnityEngine.XR.OpenXR.Features.Interactions.HTCViveTrackerProfile;
 using System.Collections;
-using Unity.VisualScripting;
 using System.Linq;
-using UnityEngine.Android;
-using static StreamlinedInputManager;
+
+
 
 // ********************************************************************************************************************
 //  USAGE
@@ -135,10 +133,6 @@ public class StreamlinedInputManager : MonoBehaviour
     {
         internal Vector3 debugPos;
         internal Quaternion debugOri;
-
-        //private double eyeTimestamp;
-
-        // unix timestamp, eyedata
         private (double, EyeData) current_eyeData;
         private List<(double, EyeData)> last_eyeDatas = new List<(double, EyeData)>();
         public (double, EyeData) EyeData
@@ -167,11 +161,6 @@ public class StreamlinedInputManager : MonoBehaviour
                     return arrOut;
                 }}
         }
-        //public double EyeTimestamp
-        //{
-        //    get { lock (eyeLock) { return eyeTimestamp; } }
-        //    set { lock (eyeLock) { eyeTimestamp = value; } }
-        //}
     }
 
     public class TrackerTracking
@@ -269,9 +258,34 @@ public class StreamlinedInputManager : MonoBehaviour
                 return res[0];
             }
         }
+
+        public List<UdpObject> getUdpObjects(byte category, byte subCategory, bool emptyCategory=false)
+        {
+            byte[] key = { category, subCategory };
+            List<UdpObject> res;
+
+            // lock udp received messages
+            lock (udpLock)
+            {
+                if (!lastReceivedUDPPackets.TryGetValue(BitConverter.ToUInt16(key, 0), out res))
+                {
+                    print("The key you are trying to access a value from has not once been received yet!");
+                    return null;
+                }
+                //UdpObject[] result = new UdpObject[res.Count];
+                //res.CopyTo(result);
+                res = new List<UdpObject>(res);
+                if (emptyCategory)
+                {
+                    // clean up when true
+                    lastReceivedUDPPackets[BitConverter.ToUInt16(key, 0)] = new List<UdpObject>(); 
+                }
+                return res;
+            }
+        }
     }
 
-    // struc tbecause we add objects of this tyüe to a list and need copies isntead of references of them saved
+    // struct because we add objects of this tyoe to a list and need copies instead of references of them saved
     public class UdpObject
     {
         private int dataPointSize;
@@ -294,6 +308,8 @@ public class StreamlinedInputManager : MonoBehaviour
             // Copy the received data part of the message into the data field of the UdpObject
             data = new byte[received[0] * Marshal.SizeOf(dtype)];
             Array.Copy(received, 12, data, 0, data.Length);
+            
+            //EventManager.Instance.GetComponent<EventManager>().newDataArrived.Invoke(data); // invoke event and transmit data
         }
 
         public object[] Data
@@ -629,18 +645,6 @@ public class StreamlinedInputManager : MonoBehaviour
     public static Dictionary<string, TrackerTracking> trackerTrackers = new Dictionary<string, TrackerTracking>();
     public static ReceivingUdp udpReceiver = new ReceivingUdp();
 
-    //tracking buffer
-    //private string headBuffer;
-    //private string leftControllerBuffer;
-    //private string rightControllerBuffer;
-    //private static string eyeBuffer;
-    //private string trackerBuffer;
-    //private string roiBuffer;
-    // udp buffer
-    //private string udpBuffer;
-
-
-
     // udp lock
     private static readonly object udpLock = new object();
 
@@ -669,26 +673,11 @@ public class StreamlinedInputManager : MonoBehaviour
     public static bool lookingAtHand { get; private set; } = false;
     public static bool lookingAtObject { get; private set; } = false;
     public static bool lookingAtTarget { get; private set; } = false;
-    public static bool eyeValid { get; private set; } = false;
-    public static bool eyeValid2 { get; private set; } = false;
-
-    
-
-
 
     // initialize the devices such that this is only done once per program start
     // called within Start()
     private void initDevices()
     {
-        // only for debugging purposes / overview of VR devices
-        //var inputDevices = new List<UnityEngine.XR.InputDevice>();
-        //InputDevices.GetDevices(inputDevices);
-
-        //foreach (var device in inputDevices)
-        //{
-        //    UnityEngine.Debug.Log(string.Format("Device found with name '{0}' and role '{1}'", device.name, device.characteristics.ToString()));
-        //}
-
         var desiredCharacteristics = InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Left | InputDeviceCharacteristics.Controller;
         InputDevices.GetDevicesWithCharacteristics(desiredCharacteristics, leftControllerDevices);
         desiredCharacteristics = InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Right | InputDeviceCharacteristics.Controller;
@@ -716,8 +705,8 @@ public class StreamlinedInputManager : MonoBehaviour
         // Endpunkt definieren, von dem die Nachrichten gesendet werden.
         print("UDPSend.init()");
 
-        // define port
-        port = 11000;
+        //// define port
+        //port = 11000;
 
         // status
         print("Sending to 127.0.0.1 : " + port);
@@ -857,8 +846,6 @@ public class StreamlinedInputManager : MonoBehaviour
             eyeBall.transform.position = eyeTracker.debugPos;
             eyeBall.transform.rotation = eyeTracker.debugOri;
 
-            eyeValid = eyeTracker.EyeData.Item2.verbose_data.left.GetValidity(SingleEyeDataValidity.SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
-            eyeValid2 = eyeTracker.EyeData.Item2.verbose_data.right.GetValidity(SingleEyeDataValidity.SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
 
         }
         // All other tracking done with openXR
@@ -1043,7 +1030,7 @@ public class StreamlinedInputManager : MonoBehaviour
 
         if (S_activateLogging)
         {
-            string addBuffer = lastUpdateTime.ToString() + "," + rightControllerTracker.rightControllerPosition.x.ToString() + "," + rightControllerTracker.rightControllerPosition.y.ToString() + "," + rightControllerTracker.rightControllerPosition.z.ToString() + "," + rightControllerTracker.rightControllerRotation.w.ToString() + "," + rightControllerTracker.rightControllerRotation.x.ToString() + "," + rightControllerTracker.rightControllerRotation.y.ToString() + "," + rightControllerTracker.rightControllerRotation.z.ToString()
+             string addBuffer = lastUpdateTime.ToString() + "," + rightControllerTracker.rightControllerPosition.x.ToString() + "," + rightControllerTracker.rightControllerPosition.y.ToString() + "," + rightControllerTracker.rightControllerPosition.z.ToString() + "," + rightControllerTracker.rightControllerRotation.w.ToString() + "," + rightControllerTracker.rightControllerRotation.x.ToString() + "," + rightControllerTracker.rightControllerRotation.y.ToString() + "," + rightControllerTracker.rightControllerRotation.z.ToString()
                 + Environment.NewLine;
             LoggingManager.AddToBuffer("RightController_Tracking", addBuffer);
         }
@@ -1082,9 +1069,6 @@ public class StreamlinedInputManager : MonoBehaviour
 
         var anipalOrigin = eyedata.verbose_data.combined.eye_data.gaze_origin_mm * 0.001f;
         var leftHandedOrigin = new Vector3(-anipalOrigin.x, anipalOrigin.y, anipalOrigin.z);
-
-        // Changed to just using camera as const offset of leftHandedOrigin
-        // var origin = main_camera.transform.position + leftHandedOrigin;
 
         var origin = main_camera.transform.position;
         var anipalDirection = eyedata.verbose_data.combined.eye_data.gaze_direction_normalized;
