@@ -18,6 +18,8 @@
 
 <h2 id="header-what-is-it">:information_source: What It Is</h2>
 
+![SIM_component](media/SIM_Overview.png)
+
 The **Streamlined Input Manager (SIM)** for Unity can be used whenever you want to **access and/or log input data** from your **VR devices** or an User Datagram Protocol (**UDP**) sender sending to you.\
 Information that can be accessed and logged in particular:
 1. Momentary **position** and **rotation** of
@@ -25,8 +27,8 @@ Information that can be accessed and logged in particular:
     * Left Controller
     * Right Controller
     * External Vive Trackers
-2. **Eyetracking** Data of the **Vive Eye Pro** Headset (including gaze direction, eye openness, etc.)
-3. **Any information** you want to receive **over UDP**
+2. **Eyetracking** Data from OpenXR or of the **Vive Eye Pro** Headset on a seperate thread for full sampling rate (including gaze direction, eye openness, etc.)
+3. **Any data** you want to receive **over UDP**
 
 <h2 id="header-important-information">:bangbang: Important Information</h2>
 
