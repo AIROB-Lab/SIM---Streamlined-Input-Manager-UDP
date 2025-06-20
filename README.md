@@ -28,11 +28,10 @@ Information that can be accessed and logged in particular:
     * Right Controller
     * External Vive Trackers
 2. **Eyetracking** Data from OpenXR or of the **Vive Eye Pro** Headset on a seperate thread for full sampling rate (including gaze direction, eye openness, etc.)
-3. **Any data** you want to receive **over UDP**
+3. **Any data** you want to receive **over UDP**. 
 
 <h2 id="header-important-information">:bangbang: Important Information</h2>
 
-All development has been performed on a VIVE Pro Eye HMD together with VIVE Controllers and External Trackers which comes with some limitations. For the Unity editor version 2021.3.22
 * For the tracking of the VR HMD and the VR Controllers [OpenXR](https://www.khronos.org/openxr/) is used such that **any OpenXR compatible HMD and Controller can be used** instead of the VIVE devices.
 * The tracking of the external VIVE Trackers requires a [C#-script](https://forum.unity.com/threads/openxr-and-openvr-together.1113136/#post-7803057) developed by the community. At the moment the **SIM is only working for VIVE Trackers** and only when the script is included in the project.
 * The Eyetracking uses the SRanipal Framework for VIVE eytracking devices. The only version of the necessary SDK working with the SIM is **1.3.3.0**. This enables us to access the **eyetracking data** on a seperate thread **at a sampling rate of around 120Hz**. However, this **limits the SIM to eyetracking of the VIVE Eye Pro**.
@@ -153,7 +152,7 @@ The message **always** consists of these different sections which are explained 
 * **Datapoint** (message[5 to (-3)]): All the datapoints you are sending.
 * **Counter** (message[(-2) to (-1)]): Last 2 bytes corresponding to an UInt16 value holding a counter. This counter is incremented with every sent message to see if a message has been lost while sending it.
 
-This protocol gives you the flexibility but also forces you to come up with your own categories and sub-categories and their corresponding encodings.
+This protocol gives you the flexibility but also forces you to come up with your own categories and sub-categories and their corresponding encodings. Additionally, in case you want to send out data in the same protocol a sender example is provided in **Unity/Sending**. A compatible example for sender and receiver in python are provided in **./Python**
 
 <h2 id="header-authors">:seedling: Authors and Acknowledgement</h2>
 
