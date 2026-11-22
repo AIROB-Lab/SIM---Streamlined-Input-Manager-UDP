@@ -1,0 +1,8 @@
+{
+  "name": "Sim.Tracking",
+  "rootNamespace": "Sim.Tracking",
+  "references": [
+    "Sim.Runtime"
+  ],
+  "autoReferenced": true
+}
