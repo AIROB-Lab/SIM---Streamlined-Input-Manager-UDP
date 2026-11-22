@@ -162,3 +162,6 @@ The current solution was tested with the HTC Vive Eye Pro and Meta Quest 3. ATM 
 This software was developed by:
 
 Fabio Egle & Clark Bäker, AIROB Lab
+## Modular Unity runtime package
+
+The additive package in `Packages/org.airob.sim` provides protocol encoding/decoding, per-channel history and UDP lifecycle without XR, eye SDK or MuJoCo dependencies. Its README describes ownership and thread behavior. Use a pinned Git revision or a pinned submodule; keep application-specific channel interpretation and task logic in the consuming project. Existing loose-script examples remain available while clients migrate.

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Sim
@@ -40,6 +40,15 @@ namespace Sim
             double oldest = double.MaxValue;
             foreach (var item in history) oldest = Math.Min(oldest, item.TimestampSeconds);
             return target < oldest ? null : best;
+        }
+        /// <summary>Read a channel batch; optional draining is useful for recorded feature streams.</summary>
+        public SimPacket[] ReadAll(byte category, byte subcategory, bool clear = false)
+        {
+            int key = category | subcategory << 8;
+            if (!channels.TryGetValue(key, out var history)) return null;
+            var result = history.ToArray();
+            if (clear) channels.Remove(key);
+            return result;
         }
         public void Clear() { channels.Clear(); LastTimestampSeconds = -1; }
     }
