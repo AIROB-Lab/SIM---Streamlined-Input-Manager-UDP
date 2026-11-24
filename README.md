@@ -1,167 +1,191 @@
-<h2 id="header-overview">Overview</h2>
+# SIM — Streamlined Input Manager
 
-[What Is It](#header-what-is-it)
+SIM provides small, reusable modules for receiving research input over UDP and observing XR poses and eye gaze. Application-specific control, task rules and recording stay in the consuming project.
 
-[Important Information](#header-important-information)
+The `dev` branch brings together the modular UDP runtime, optional XR acquisition and shared-code cleanup. The original loose-script examples remain available for existing integrations.
 
-[Setup](#header-setup)
+## Choose the modules you need
 
-[Getting Started](#header-getting-started)
+| Module | Purpose | Dependencies |
+| --- | --- | --- |
+| [SIM UDP Runtime](Packages/org.airob.sim/README.md) | Packet codec, bounded per-channel history and UDP transport | Standard C# libraries; no Unity, XR, eye SDK or MuJoCo API dependency |
+| [SIM Research Tracking](Packages/org.airob.sim.tracking/README.md) | Read-only headset, controller, tracker and gaze samples | SIM UDP Runtime and Unity's XR module; a configured XR runtime for device input |
+| [Legacy Unity examples](Unity) | Original combined input/logging component, sender and device-specific helpers | Depends on the scripts selected; see the legacy section below |
+| [Python examples](Python) | UDP sending and receiving | See [pyproject.toml](Python/pyproject.toml) and each script's imports |
 
-[Examples](#header-examples)
+Unity's existing Tracked Pose Driver and XR Interaction Toolkit components own scene movement. SIM's tracking package observes devices: it never moves the XR Origin, headset, controllers or trackers, and never starts or stops XR. The packages do not impose a CSV schema, study protocol or logging location.
 
-[SIM-UDP Message Protocol](#header-protocol)
+## Installation
 
-[Authors and Acknowledgement](#header-authors)
+The Unity packages declare Unity 6000.0 or newer. Integration has been checked in PAVE with Unity **6000.3.29f1**; this is the tested Editor version, not a claim that every Unity 6 release or headset has been validated.
 
-[License](#header-license)
+### Install through Unity Package Manager
 
-<h2 id="header-what-is-it">:information_source: What It Is</h2>
+Use **Add package from Git URL** for the UDP runtime:
 
-![SIM_component](media/SIM_Overview.png)
+```text
+https://github.com/AIROB-Lab/SIM---Streamlined-Input-Manager-UDP.git?path=/Packages/org.airob.sim#dev
+```
 
-The **Streamlined Input Manager (SIM)** for Unity can be used whenever you want to **access and/or log input data** from your **VR devices** or an User Datagram Protocol (**UDP**) sender sending to you.\
-Information that can be accessed and logged in particular:
-1. Momentary **position** and **rotation** of
-    * VR HMD
-    * Left Controller
-    * Right Controller
-    * External Vive Trackers
-2. **Eyetracking** Data from OpenXR or of the **Vive Eye Pro** Headset on a seperate thread for full sampling rate (including gaze direction, eye openness, etc.)
-3. **Any data** you want to receive **over UDP**. 
+If you also need XR acquisition, install the tracking package after installing the runtime:
 
-<h2 id="header-important-information">:bangbang: Important Information</h2>
+```text
+https://github.com/AIROB-Lab/SIM---Streamlined-Input-Manager-UDP.git?path=/Packages/org.airob.sim.tracking#dev
+```
 
-* For the tracking of the VR HMD and the VR Controllers [OpenXR](https://www.khronos.org/openxr/) is used such that **any OpenXR compatible HMD and Controller can be used** instead of the VIVE devices.
-* The tracking of the external VIVE Trackers requires a [C#-script](https://forum.unity.com/threads/openxr-and-openvr-together.1113136/#post-7803057) developed by the community. At the moment the **SIM is only working for VIVE Trackers** and only when the script is included in the project.
-* The Eyetracking uses the SRanipal Framework for VIVE eytracking devices. The only version of the necessary SDK working with the SIM is **1.3.3.0**. This enables us to access the **eyetracking data** on a seperate thread **at a sampling rate of around 120Hz**. However, this **limits the SIM to eyetracking of the VIVE Eye Pro**.
+Install both URLs explicitly when using tracking. Its dependency declares the runtime package by name/version; that declaration does not supply the runtime's Git repository URL. UDP-only projects do not need the tracking package or a vendor SDK.
 
-<h2 id="header-setup">:wrench: Setup</h2>
+For reproducible research, replace `#dev` in both URLs with the same full commit SHA and retain the Unity package lock file. Following `dev` deliberately allows later updates.
 
-Include the SIM into an **existing project** of yours
+### Use a repository checkout or submodule
 
-Required Packages and Scripts:
-* Packages
-    * **OpenXR Plugin**
-        * Enables use of OpenXR standard to access XR-platforms and -devices.
-    * (**XR Interaction Toolkit** (including import of "**Starter Assets**" sample))
-        * Provides a framework that makes 3D and UI interactions available from Unity input events.
-    * **SRanipal**
-        * Enables us to use the Eyetracking
-* Scripts
-    * **StreamlinedInputManager.cs**
-        * Component providing the reading access to the desired input information.
-    * **Logging.cs**
-        * Background script with functionality to log the desired input information for future analysis. 
-    * **HTCViveTrackerProfile.cs**
-        * Background script enabling the tracking of external VIVE trackers.
+```powershell
+git clone --branch dev https://github.com/AIROB-Lab/SIM---Streamlined-Input-Manager-UDP.git
+```
 
-### Include SIM into an Existing Project
-1. **Include** necessary **scripts** into your project
-    * SIM, Logging
-    * (optional) HTCViveTrackerProfile
-2. **Attach SIM component** to an empty or existing GameObject
-3. In the Package Manager, **import Packages**:
-    * OpenXR Plugin
-    * XR Interaction Toolkit (including import of "Starter Assets" sample)
-4. **Activate OpenXR** in Project Setting -> XR Plug-in Management (Caution: Do not fix the Pose Control error that might show up, because it will break the tracking of the Vive trackers)
-5. Under Project Setting -> XR Plug-in Management -> OpenXR, **add interaction profiles** for your device (e.g. HTC Vive Controller Profile, HTC Vive Tracker Profile)
-6. Download the **1.3.3** version of the [VIVE Eye and Facial Tracking SDK](https://developer.vive.com/resources/vive-sense/eye-and-facial-tracking-sdk/download/archive/1_3_3_0/)
-7. Include the SDK plugin (Assets -> Import Package -> Custom Package) that can be found in your download under SDK-v1.3.3.0/SDK/02_Unity/Vive-SRanipal-Unity-Plugin.unitypackage
+In Package Manager, use **Add package from disk** and select the required package's `package.json` under `Packages/`. Add the UDP runtime before tracking. A host project can instead pin this repository as a Git submodule and reference both package directories with relative paths, as PAVE does. Initialize submodules when cloning such a host project.
 
-<h2 id="header-getting-started">:airplane: Getting Started</h2>
+A repository clone alone does not install a Unity Editor, configure XR, or retrieve a vendor eye-tracking SDK. The loose scripts under `Unity/` are examples, not a complete Unity project to open.
 
-After Setup it is now time to make use of the SIM. In the screenshot below you see how the component for the SIM looks inside Unity's "Inspector" window:
+## Receive UDP in Unity
 
-![SIM_component](media/SIM%20component.jpg)
+Attach a small application-owned component such as this one. Choose a receive port that matches your sender; `11000` is only an example.
 
-Let's go through the options there one by one:
-1. **Activate Logging**
-    * When checked, all input that is selected to be received (UDP) or tracked (XR) is logged and written into .csv files located in a /data folder in your project's root directory.
-2. **Receive UDP** + **Port**
-    * When checked, input that arrives over UDP at the selected port is received (and potentially logged) by the SIM.
-3. **Track Eyes**, **Track Head**, **Track Left Controller**, **Track Right Controller**
-    * When checked, input from the HMD, the left controller, the right controller and/or the VIVE Pro Eye eyetracking framework is tracked (and potentially logged).
-4. **Used Trackers**
-    * List containing an element for each possible SteamVR tracker location.
-    * If you want to track (and potentially log) the input of an external VIVE tracker, the *used* checkbox needs to be checked for the element with the specific tracker position you want to use.
+```csharp
+using Sim;
+using UnityEngine;
 
-After you have checked the necessary for your project, you can now start your application and access what you are tracking/receiving from anywhere in your project. :sparkles: \
-In general there is one `public static` member of the SIM that you can access from anywhere in your project to retain the input information you are looking for. \
-These members are called:
-* headTracker
-* leftControllerTracker
-* rightControllerTracker
-* eyeTracker
-* trackerTrackers
-* udpReceiver
+public sealed class SimInputExample : MonoBehaviour
+{
+    private SimUdpConnection connection;
+    private readonly SimHistory history = new SimHistory { Capacity = 100 };
 
-Following is a list containing accessible information for every member:
-1. **headTracker**
-    * Timestamp (property): Unix timestamp generated using the [Stopwatch](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=net-7.0) class.
-    * Position (property): Position (Vector3) of the HMD in the real world coordinate system (left-handed, same as Unity).
-    * Rotation (property): Rotation (Quaternion) of the HMD.
-2. **leftControllerTracker**
-    * Timestamp (property): Unix timestamp generated using the [Stopwatch](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=net-7.0) class.
-    * Position (property): Position (Vector3) of the left controller in the real world coordinate system (left-handed, same as Unity).
-    * Rotation (property): Rotation (Quaternion) of the left controller.
-3. **rightControllerTracker**
-    * Timestamp (property): Unix timestamp generated using the [Stopwatch](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=net-7.0) class.
-    * Position (property): Position (Vector3) of the right controller in the real world coordinate system (left-handed, same as Unity).
-    * Rotation (property): Rotation (Quaternion) of the right controller.
-4. **eyeTracker**
-    * Timestamp (property): Unix timestamp generated using the [Stopwatch](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=net-7.0) class.
-    * EyeData (property): EyeData instance of the ViveSR.anipal.Eye.EyeData struct. Contains all eyetracking information available.
-5. **trackerTrackers** \
-**This member is a Dictionary** with as many key-value pairs as you are tracking external trackers (selected in the inspector). To access a certain tracker and its input information **you first have to specify the tracker using a string-key (e.g. "TrackerRightElbow", "TrackerLeftShoulder", etc.)**. The resulting value then has the same properties as the HMD and the controllers.
-    * Timestamp (property): Unix timestamp generated using the [Stopwatch](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=net-7.0) class.
-    * Position (property): Position (Vector3) of the specified tracker in the real world coordinate system (left-handed, same as Unity).
-    * Rotation (property): Rotation (Quaternion) of the specified tracker.
+    private void OnEnable()
+    {
+        history.Clear(); // Do not reuse samples from an earlier recording session.
+        connection = new SimUdpConnection(11000);
+    }
 
-6. **udpReceiver**
-* getData(byte category, byte subcategory) (method): Using this method you can retain the last data of a particular data (category, subcategory)-pair that has been received. The method returns an object array that already contains the data as the datatype you want your data to have. How the encoding/decoding of udp messages works is described in [SIM-UDP Message Protocol](#header-protocol).
+    private void Update()
+    {
+        // Socket callbacks only queue packets. Consume them on the Unity main thread.
+        while (connection.TryReceive(out SimPacket packet))
+        {
+            history.Add(packet);
+        }
 
-Let's see some examples on accessing input information next
-<h2 id="header-examples">:flashlight: Examples</h2>
+        SimPacket latest = history.Get(category: 1, subcategory: 0);
+        if (latest == null || SimClock.Now - latest.ReceivedAtSeconds > 0.5)
+        {
+            return; // The application decides what to do when input is unavailable.
+        }
 
-#### UDP
-![UDP_Example](media/Screenshot%202023-08-07%20130124.jpg)
+        // Interpret latest.Values here using your application's channel contract.
+        // Values retain their declared numeric types; a sample is not always a double.
+    }
 
-#### Eye Tracking
-![Eye-Tracking-Example](media/Screenshot%202023-08-07%20125907.jpg)
+    private void OnDisable()
+    {
+        connection?.Dispose(); // Close the socket and discard queued packets.
+        connection = null;
+        history.Clear();
+    }
+}
+```
 
-#### Trackingof External Vive Trackers
-![Tracker-Tracking-Example](media/Screenshot%202023-08-07%20131403.jpg)
+Keep one owning thread for `SimHistory`, normally the main thread that drains the connection. `Get(..., samplesBack: 0)` selects the newest packet; `1` selects the previous packet. A time delay uses source timestamps and selects the nearest available sample to the requested time. Use either a sample delay or a time delay. Missing or insufficient history returns `null`; invalid delays throw. `ReadAll(category, subcategory, clear: true)` reads and drains a channel batch.
 
-<h2 id="header-protocol">:scroll: SIM-UDP Message Protocol</h2>
+Inspect `InvalidPackets`, `DroppedPackets` and `LastError` on the connection in your application's diagnostics. The receive queue is bounded to 2048 packets. Missing input, an old receipt time and queue overflow must not be presented as fresh measurements.
 
-When sending UDP messages to the port you selected in the inspector, you have to stick to a defined **message protocol**. \
-One **UDP message is** essentially a **byte array**. To make sense of the bytes we have come up with an **contract every message has to stick to**. \
-No matter what kind of **numeric** data you send, your messages (byte arrays) are always looking like this: \
-**Number_of_data_points** | **Datatype_of_data_points** | **Category_of_data** | **Subcategory_of_data** | **Timestamp** | **Datapoints** | **Counter** \
-The message **always** consists of these different sections which are explained below. The only part of the message varying in size is the Datapoints section.
-* **Number_of_data_points** (message[0]) : 1 byte saying how many values are sent in this message
-* **Datatype_of_data_points** (message[1]): 1 byte saying which datatype is sent
-    * The byte carries following information: 
-        1. How many bytes (between 1 and 8) is each number (----XXXX)
-        2. Is the datatype signed(1) or unsigned(0) (---X----)
-        3. Is the datatype floating point(1) or integer(0) (--X-----)
-* **Category_of_data** (message[2]): 1 byte specifying the category the data (e.g. EMG data)
-* **Subcategory_of_data** (message[3]): 1 byte saying which sub-category the data is (e.g. raw EMG data)
-* **Timestamp** (message[4 to 11]): 8 bytes corresponding to one double which holds the timestamp of the datavalues sent in this message
-* **Datapoint** (message[5 to (-3)]): All the datapoints you are sending.
-* **Counter** (message[(-2) to (-1)]): Last 2 bytes corresponding to an UInt16 value holding a counter. This counter is incremented with every sent message to see if a message has been lost while sending it.
+`TimestampSeconds` is the sender-provided source time. `ReceivedAtSeconds` is host receipt time from `SimClock.Now`: UTC-anchored seconds advanced by a monotonic clock. These are different measurements; SIM does not synchronize clocks between computers. Use host receipt age for freshness checks, and preserve source time for analysis.
 
-This protocol gives you the flexibility but also forces you to come up with your own categories and sub-categories and their corresponding encodings. Additionally, in case you want to send out data in the same protocol a sender example is provided in **./Unity** with **SimUdpSender.cs** and an example usage in **PubSensorData.cs**(this one will only work if you have the mujoco plugin installed). A compatible example for sender and receiver in python are provided in **./Python**
+### Send UDP
 
-<h2 id="state">State of the Repo</h2>
-The current solution was tested with the HTC Vive Eye Pro and Meta Quest 3. ATM the state of the repo is still under development. Please let us know if you encounter any issues with the provided solution. 
+A connection without a receive port is send-only. The caller supplies the source timestamp and packet counter:
 
-<h2 id="header-authors">:seedling: Authors and Acknowledgement</h2>
+```csharp
+using (var sender = new Sim.SimUdpConnection())
+{
+    byte[] bytes = Sim.SimPacketCodec.Encode(
+        new double[] { 0.25, -0.5 },
+        category: 1, subcategory: 0,
+        timestamp: Sim.SimClock.Now, counter: 0);
+    sender.Send(bytes, "127.0.0.1", 11000);
+}
+```
 
-This software was developed by:
+Reuse and dispose a connection for continuous streaming rather than opening one per packet. Increment the counter in the sending application. Channel meanings, units and control behavior belong to the application, not the transport.
 
-Fabio Egle & Clark Bäker, AIROB Lab
-## Modular Unity runtime package
+## Observe XR poses
 
-The additive package in `Packages/org.airob.sim` provides protocol encoding/decoding, per-channel history and UDP lifecycle without XR, eye SDK or MuJoCo dependencies. Its README describes ownership and thread behavior. Use a pinned Git revision or a pinned submodule; keep application-specific channel interpretation and task logic in the consuming project. Existing loose-script examples remain available while clients migrate.
+Configure XR Plug-in Management and the appropriate OpenXR runtime and interaction profiles in the host project. Keep the existing rig's movement components. Create a reader for an explicit device role and call it on the main thread:
+
+```csharp
+var reader = new Sim.Tracking.SimXrPoseReader(
+    UnityEngine.XR.InputDeviceCharacteristics.HeadMounted);
+
+// Use the camera-offset transform that parents the tracked camera/controllers.
+Sim.Tracking.SimPoseSample sample = reader.Read(trackingOrigin);
+if (sample.IsValid)
+{
+    UnityEngine.Pose worldPose = sample.WorldPose;
+    // Record or inspect the observation; do not use acquisition to drive the rig.
+}
+```
+
+Create readers once and reuse them. Use `Controller | Left` or `Controller | Right` characteristics for the corresponding controller. Tracker roles need the host project's matching interaction profile and role characteristics; SIM does not assign Vive roles itself.
+
+Samples contain local and world poses, host acquisition time and an explicit availability state. Missing, ambiguous, untracked and incomplete devices are invalid observations, not fresh zero poses. A role must resolve to exactly one device. Devices are rediscovered periodically and after disconnection.
+
+Positions are in meters. Supply the actual tracking-to-world reference; a null origin explicitly means identity, not automatic origin discovery. World values reflect that reference at acquisition time. See the [tracking package guide](Packages/org.airob.sim.tracking/README.md) for coordinate-frame and timing details.
+
+## Observe eye gaze
+
+Attach `SimOpenXrGazeSource`, assign its `TrackingOrigin`, and enable Eye Gaze Interaction in the host project's OpenXR settings. Read `TryGetLatest(maximumAgeSeconds, out sample)` on the main thread. Disabled, invalid, future-dated or stale samples are rejected. No gaze-capable device means unavailable: head direction is never substituted for an eye measurement.
+
+The generic source provides combined gaze when exposed by the runtime. Separate left/right validity is unspecified when not supplied. Headset/controller pose support does not imply that a device supports eye tracking; permissions, calibration and feature availability remain specific to the host and device.
+
+A vendor provider can implement `SimGazeSource`. Native callbacks must transfer data to the main thread before publishing. The modular tracking package does not include SRanipal or a vendor SDK, does not promise a fixed eye-sampling rate, and does not change an existing HTC/SRanipal integration's origins or calibration.
+
+## SIM UDP wire format
+
+The modular runtime preserves the existing little-endian layout:
+
+```text
+count | type | category | subcategory | timestamp | values | counter
+```
+
+| Field | Byte offset | Size |
+| --- | --- | --- |
+| Number of values | 0 | 1 byte; 1–255 values |
+| Numeric type | 1 | 1 byte |
+| Category / subcategory | 2 / 3 | 1 byte each |
+| Source timestamp | 4 | 8-byte double |
+| Numeric values | 12 | count × numeric width |
+| Packet counter | 12 + payload size | 2-byte unsigned integer |
+
+The envelope is 14 bytes, plus the payload. In the type byte, the low four bits specify numeric width, `0x10` marks signed integers and `0x20` marks floating-point values. The decoder accepts float32/float64, signed integers of 1/2/4/8 bytes and unsigned integers of 1/2/4/8 bytes, preserving their boxed numeric types. The current encoder writes double arrays (`0x28`). Empty payloads, unsupported type codes, invalid lengths and nonfinite timestamps/values are rejected.
+
+The [Python sender](Python/SIM_send.py) and [receiver](Python/SIM_recv.py) illustrate the application channel contract. Match destination address, port, numeric encoding and channel meanings when connecting another research tool.
+
+## Existing loose-script integrations
+
+The original scripts remain under `Unity/` for projects that already depend on their combined component API. Their `StreamlinedInputManager`, logging behavior, public static members and vendor assumptions are separate from the modular packages. Existing integrations can migrate module by module; importing the new packages does not automatically replace those components or migrate scenes and CSV consumers.
+
+The legacy examples include OpenXR input, the HTC Vive tracker-profile helper and SRanipal eye acquisition. The original eye setup targeted **SRanipal 1.3.3.0** and Vive Pro Eye. Vendor plugins are not bundled here. `PubSensorData.cs` is a MuJoCo-specific example; MuJoCo is not a dependency of the modular runtime or tracking package. Import only the examples and vendor dependencies your project uses.
+
+Earlier versions of this README reported HTC Vive Pro Eye and Meta Quest 3 use with the legacy solution. That historical report is not a new hardware validation of the modular packages or a guarantee of eye tracking on either device.
+
+## Validation and remaining checks
+
+The merged package code was compiled in PAVE with Unity 6000.3.29f1. Automated runtime checks cover packet round-trip, truncated-packet rejection, bounded sample/time history, unavailable history, invalid delay handling, batch draining, real UDP loopback, invalid-packet accounting and connection disposal. These checks were rerun on the consolidated code on **24 November 2026**. The small check harness lives outside this repository; this repository does not yet provide a packaged test suite or CI workflow.
+
+PAVE's Windows build also packaged and loaded the native MuJoCo library, but that is a consuming-project check, not a SIM dependency or proof of hardware tracking. The recent no-headset runs do not validate Meta/HTC device behavior, tracker roles, gaze accuracy/rate, permissions or calibration. Those require the intended devices and runtime. Do not infer current hardware compatibility from successful compilation alone.
+
+## Contributing
+
+Build features on feature branches and merge reviewed, tested work into `dev`. Keep generic transport, history and acquisition here; keep task rules, actuator mappings, recording schemas and scientific outcomes in the consuming application. Prefer small, commented classes and explicit units, frames, timestamps and missing-data behavior. Preserve package `.meta` files and document changes that affect existing integrations.
+
+## Authors and license
+
+Developed by **Fabio Egle and Clark Bäker, AIROB Lab**. Distributed under the [MIT License](LICENSE).
