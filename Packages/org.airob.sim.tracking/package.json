@@ -1,0 +1,11 @@
+{
+  "name": "org.airob.sim.tracking",
+  "version": "0.1.0",
+  "displayName": "SIM Research Tracking",
+  "unity": "6000.0",
+  "description": "Optional read-only XR pose and gaze acquisition. Never drives scene transforms.",
+  "dependencies": {
+    "org.airob.sim": "0.2.0",
+    "com.unity.modules.xr": "1.0.0"
+  }
+}
