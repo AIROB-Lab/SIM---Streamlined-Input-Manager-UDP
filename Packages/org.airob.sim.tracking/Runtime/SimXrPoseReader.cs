@@ -15,7 +15,6 @@ namespace Sim.Tracking
         // These names are defined by OpenXR EyeGazeInteraction, not devicePosition/deviceRotation.
         static readonly InputFeatureUsage<Vector3> gazePosition = new InputFeatureUsage<Vector3>("gazePosition");
         static readonly InputFeatureUsage<Quaternion> gazeRotation = new InputFeatureUsage<Quaternion>("gazeRotation");
-
         public SimXrPoseReader(InputDeviceCharacteristics characteristics, bool gaze = false)
         {
             this.characteristics = characteristics;
@@ -31,20 +30,33 @@ namespace Sim.Tracking
                 InputDevices.GetDevicesWithCharacteristics(characteristics, matches);
                 nextDiscovery = SimClock.Now + 0.5;
             }
-            if (matches.Count == 0) return SimPoseSample.Missing(TrackingAvailability.Unavailable);
-            if (matches.Count != 1) return SimPoseSample.Missing(TrackingAvailability.Ambiguous);
+
+            if (matches.Count == 0)
+            {
+                return SimPoseSample.Missing(TrackingAvailability.Unavailable);
+            }
+
+            if (matches.Count != 1)
+            {
+                return SimPoseSample.Missing(TrackingAvailability.Ambiguous);
+            }
 
             InputDevice device = matches[0];
             if (!device.isValid || !device.TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) || !tracked)
+            {
                 return SimPoseSample.Missing(TrackingAvailability.Untracked);
-            if (!device.TryGetFeatureValue(CommonUsages.trackingState, out InputTrackingState state) ||
-                (state & (InputTrackingState.Position | InputTrackingState.Rotation)) !=
-                (InputTrackingState.Position | InputTrackingState.Rotation))
-                return SimPoseSample.Missing(TrackingAvailability.Untracked);
+            }
 
-            if (!device.TryGetFeatureValue(gaze ? gazePosition : CommonUsages.devicePosition, out Vector3 position) ||
-                !device.TryGetFeatureValue(gaze ? gazeRotation : CommonUsages.deviceRotation, out Quaternion rotation))
+            if (!device.TryGetFeatureValue(CommonUsages.trackingState, out InputTrackingState state) || (state & (InputTrackingState.Position | InputTrackingState.Rotation)) != (InputTrackingState.Position | InputTrackingState.Rotation))
+            {
+                return SimPoseSample.Missing(TrackingAvailability.Untracked);
+            }
+
+            if (!device.TryGetFeatureValue(gaze ? gazePosition : CommonUsages.devicePosition, out Vector3 position) || !device.TryGetFeatureValue(gaze ? gazeRotation : CommonUsages.deviceRotation, out Quaternion rotation))
+            {
                 return SimPoseSample.Missing(TrackingAvailability.InvalidData);
+            }
+
             return SimPoseSample.FromLocal(SimClock.Now, position, rotation, trackingOrigin);
         }
     }

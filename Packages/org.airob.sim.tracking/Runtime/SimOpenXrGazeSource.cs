@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.XR;
 
 namespace Sim.Tracking
@@ -9,21 +10,20 @@ namespace Sim.Tracking
     public sealed class SimOpenXrGazeSource : SimGazeSource
     {
         [Tooltip("XR Origin camera-offset transform. Null explicitly means identity tracking space.")]
-        public Transform trackingOrigin;
+        [FormerlySerializedAs("trackingOrigin")]
+        public Transform TrackingOrigin;
         readonly SimXrPoseReader reader = new SimXrPoseReader(InputDeviceCharacteristics.EyeTracking, true);
-
         void Update()
         {
-            SimPoseSample pose = reader.Read(trackingOrigin);
+            SimPoseSample pose = reader.Read(TrackingOrigin);
             Status = pose.Availability.ToString();
             if (!pose.IsValid)
             {
                 Latest = new SimGazeSample(pose.TimestampSeconds, "OpenXR", "tracking_origin", pose.Availability, default, default);
                 return;
             }
-            Latest = new SimGazeSample(pose.TimestampSeconds, "OpenXR", "tracking_origin", pose.Availability,
-                new Ray(pose.LocalPose.position, pose.LocalPose.rotation * Vector3.forward),
-                new Ray(pose.WorldPose.position, pose.WorldPose.rotation * Vector3.forward));
+
+            Latest = new SimGazeSample(pose.TimestampSeconds, "OpenXR", "tracking_origin", pose.Availability, new Ray(pose.LocalPose.position, pose.LocalPose.rotation * Vector3.forward), new Ray(pose.WorldPose.position, pose.WorldPose.rotation * Vector3.forward));
         }
     }
 }

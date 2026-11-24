@@ -13,8 +13,7 @@ namespace Sim.Tracking
         {
             sample = Latest;
             double age = SimClock.Now - sample.TimestampSeconds;
-            return isActiveAndEnabled && sample.IsValid && maximumAgeSeconds > 0 &&
-                age >= 0 && age <= maximumAgeSeconds;
+            return isActiveAndEnabled && sample.IsValid && maximumAgeSeconds > 0 && age >= 0 && age <= maximumAgeSeconds;
         }
 
         protected virtual void OnDisable()
